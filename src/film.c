@@ -3,9 +3,6 @@
 #include <string.h>
 #include "film.h"
 
-/*
- * Constructeur / destructeur */
-
 void init_catalogue(Catalogue *c) {
     c->alloc = 0;
     c->n = 0;
@@ -13,35 +10,30 @@ void init_catalogue(Catalogue *c) {
 }
 
 void clear_catalogue(Catalogue *c) {
-    free(c->tab);   
+    free(c->tab);
     c->tab = NULL;
     c->alloc = 0;
     c->n = 0;
 }
 
-/** Sauvegarde du catalogue (réécriture complète du fichier)*/
+Film *chargerFilms(char *nomFichier, int *nbFilms) {
+    /* ... code de ton coéquipier, inchangé ... */
+}
 
-int sauvegarder_catalogue(const Catalogue *c, const char *nomFichier) {
-    FILE *f = fopen(nomFichier, "w"); 
+int sauvegarderFilms(const Film *tableau, int nbFilms, const char *nomFichier) {
+    FILE *f = fopen(nomFichier, "w");
     if (f == NULL) {
         fprintf(stderr, "Erreur : impossible d'écrire dans %s\n", nomFichier);
         return 0;
     }
-
-    for (int i = 0; i < c->n; i++) {
+    for (int i = 0; i < nbFilms; i++) {
         fprintf(f, "%d;%s;%s;%d;%.1f\n",
-                c->tab[i].id,
-                c->tab[i].titre,
-                c->tab[i].genre,
-                c->tab[i].annee,
-                c->tab[i].note);
+                tableau[i].id, tableau[i].titre, tableau[i].genre,
+                tableau[i].annee, tableau[i].note);
     }
-
     fclose(f);
     return 1;
 }
-
-
 
 /* void ajouter_film(Catalogue *c) { ... } */
 /* void afficher_films(const Catalogue *c) { ... } */
