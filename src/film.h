@@ -27,3 +27,4 @@ int charger_catalogue(Catalogue *c, const char *nomFichier);
 int sauvegarder_catalogue(const Catalogue *c, const char *nomFichier);
 
 #endif
+
