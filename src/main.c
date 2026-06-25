@@ -1,42 +1,58 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>  
 #include "film.h"
+
+#define RESET   "\033[0m"
+#define ROUGE   "\033[31m"
+#define VERT    "\033[32m"
+#define JAUNE   "\033[33m"
+#define BLEU    "\033[34m"
+#define MAGENTA "\033[35m"
+#define CYAN    "\033[36m"
+#define GRAS    "\033[1m"
+ 
+/* SUPPRESSION DU MOT CLÉ STATIC POUR LE PARTAGE AVEC FILM.C */
+void vider_buffer(void) {
+    int c;
+    while ((c = getchar()) != '\n' && c != EOF) {}
+}
  
 static void afficher_menu(void) {
-    printf("\n===== CATALOGUE DE FILMS =====\n");
-    printf("1. Ajouter un film\n");
-    printf("2. Afficher tous les films\n");
-    printf("3. Rechercher un film par identifiant\n");
-    printf("4. Rechercher un film par titre\n");
-    printf("5. Afficher les films d'un genre donne\n");
-    printf("6. Modifier un film\n");
-    printf("7. Supprimer un film\n");
-    printf("8. Trier par note decroissante\n");
-    printf("9. Trier par ordre alphabetique\n");
-    printf("10. Top 5 des films\n");
-    printf("11. Statistiques\n");
-    printf("0. Quitter\n");
-    printf("Choix : ");
+    printf(BLEU GRAS "\n╔═══════════════════════════════════════════════╗\n" RESET);
+    printf(BLEU GRAS "║        🎬  CATALOGUE PERSONNEL DE FILMS  🎬    ║\n" RESET);
+    printf(BLEU GRAS "╠═══════════════════════════════════════════════╣\n" RESET);
+    printf(BLEU "║  " RESET CYAN "1." RESET "  Ajouter un film                          " BLEU "║\n" RESET);
+    printf(BLEU "║  " RESET CYAN "2." RESET "  Afficher tous les films                  " BLEU "║\n" RESET);
+    printf(BLEU "║  " RESET CYAN "3." RESET "  Rechercher par identifiant               " BLEU "║\n" RESET);
+    printf(BLEU "║  " RESET CYAN "4." RESET "  Rechercher par titre                     " BLEU "║\n" RESET);
+    printf(BLEU "║  " RESET CYAN "5." RESET "  Afficher les films d'un genre            " BLEU "║\n" RESET);
+    printf(BLEU "║  " RESET CYAN "6." RESET "  Modifier un film                         " BLEU "║\n" RESET);
+    printf(BLEU "║  " RESET CYAN "7." RESET "  Supprimer un film                        " BLEU "║\n" RESET);
+    printf(BLEU GRAS "╠═══════════════════════════════════════════════╣\n" RESET);
+    printf(BLEU "║  " RESET JAUNE "8." RESET "  Trier par note décroissante              " BLEU "║\n" RESET);
+    printf(BLEU "║  " RESET JAUNE "9." RESET "  Trier par ordre alphabétique            " BLEU "║\n" RESET);
+    printf(BLEU "║  " RESET JAUNE "10." RESET " Top 5 des films                          " BLEU "║\n" RESET);
+    printf(BLEU "║  " RESET JAUNE "11." RESET " Statistiques                             " BLEU "║\n" RESET);
+    printf(BLEU GRAS "╠═══════════════════════════════════════════════╣\n" RESET);
+    printf(BLEU "║  " RESET ROUGE "0." RESET "  Quitter                                  " BLEU "║\n" RESET);
+    printf(BLEU GRAS "╚═══════════════════════════════════════════════╝\n" RESET);
+    printf(CYAN "  Votre choix : " RESET);
 }
- 
-/* Vide le buffer d'entree jusqu'au prochain saut de ligne. */
-static void vider_buffer(void) {
-    int c;
-    while ((c = getchar()) != '\n' && c != EOF) { }
-}
- 
+
 int main(void) {
     Catalogue cat;
     init_catalogue(&cat);
  
-    /* ---Film* + int -> Catalogue --- */
-    int nbFilms;
+    int nbFilms = 0;
     Film *films = chargerFilms(NOM_FICHIER, &nbFilms);
-    cat.tab = films;
-    cat.n = nbFilms;
-    cat.alloc = nbFilms;
+    if (films != NULL) {
+        cat.tab   = films;
+        cat.n     = nbFilms;
+        cat.alloc = nbFilms;
+    }
  
-    printf("%d film(s) charge(s) depuis %s.\n", cat.n, NOM_FICHIER);
+    printf(VERT GRAS "\n✅ %d film(s) chargé(s) depuis %s.\n" RESET, cat.n, NOM_FICHIER);
  
     int choix = -1;
     int id;
@@ -47,6 +63,7 @@ int main(void) {
         if (scanf("%d", &choix) != 1) {
             vider_buffer();
             choix = -1;
+            printf(ROUGE "  ⚠️  Entrée invalide, veuillez réessayer.\n" RESET);
             continue;
         }
         vider_buffer();
@@ -54,7 +71,6 @@ int main(void) {
         switch (choix) {
             case 1:
                 ajouter_film(&cat);
-                sauvegarderFilms(cat.tab, cat.n, NOM_FICHIER);
                 break;
  
             case 2:
@@ -62,26 +78,28 @@ int main(void) {
                 break;
  
             case 3:
-                printf("Identifiant a rechercher : ");
+                printf(CYAN "  Identifiant à rechercher : " RESET);
                 scanf("%d", &id);
                 vider_buffer();
                 rechercher_par_id(&cat, id);
                 break;
  
             case 4:
-                printf("Titre (ou partie du titre) a rechercher : ");
-                scanf(" %99[^\n]", texte);
+                printf(CYAN "  Titre (ou partie) à rechercher : " RESET);
+                fgets(texte, sizeof(texte), stdin);
+                texte[strcspn(texte, "\n")] = '\0';
                 rechercher_par_titre(&cat, texte);
                 break;
  
             case 5:
-                printf("Genre a rechercher : ");
-                scanf(" %99[^\n]", texte);
+                printf(CYAN "  Genre à rechercher : " RESET);
+                fgets(texte, sizeof(texte), stdin);
+                texte[strcspn(texte, "\n")] = '\0';
                 afficher_par_genre(&cat, texte);
                 break;
  
             case 6:
-                printf("Identifiant du film a modifier : ");
+                printf(CYAN "  Identifiant du film à modifier : " RESET);
                 scanf("%d", &id);
                 vider_buffer();
                 modifier_film(&cat, id);
@@ -89,7 +107,7 @@ int main(void) {
                 break;
  
             case 7:
-                printf("Identifiant du film a supprimer : ");
+                printf(CYAN "  Identifiant du film à supprimer : " RESET);
                 scanf("%d", &id);
                 vider_buffer();
                 supprimer_film(&cat, id);
@@ -113,18 +131,16 @@ int main(void) {
                 break;
  
             case 0:
-                printf("Au revoir !\n");
+                printf(VERT GRAS "\n  👋 Au revoir !\n\n" RESET);
                 break;
  
             default:
-                printf("Choix invalide.\n");
+                printf(ROUGE "  ⚠️  Choix invalide, veuillez réessayer.\n" RESET);
         }
+ 
     } while (choix != 0);
- 
-    /* --- Sauvegarde finale de securite --- */
+   
     sauvegarderFilms(cat.tab, cat.n, NOM_FICHIER);
- 
     clear_catalogue(&cat);
     return 0;
 }
- 

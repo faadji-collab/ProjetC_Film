@@ -17,10 +17,12 @@ typedef struct {
     Film *tab;
 } Catalogue;
 
+void vider_buffer(void);
+
 Film *chargerFilms(char *nomFichier, int *nbFilms);
 int sauvegarderFilms(const Film *tableau, int nbFilms, const char *nomFichier);
 
-/*Gestion en mémoire (format Catalogue) - responsable : moi */
+/* Gestion en mémoire (format Catalogue) */
 void init_catalogue(Catalogue *c);
 void clear_catalogue(Catalogue *c);
 
@@ -33,8 +35,8 @@ void modifier_film(Catalogue *c, int id);
 void supprimer_film(Catalogue *c, int id);
  
 /* Fonctionnalités bonus */
-void trier_par_note(Catalogue *c);
-void trier_par_titre(Catalogue *c);
+void trier_par_note(const Catalogue *c);
+void trier_par_titre(const Catalogue *c);
 void top5_films(const Catalogue *c);
 void afficher_statistiques(const Catalogue *c);
  

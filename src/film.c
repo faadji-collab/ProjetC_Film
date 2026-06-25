@@ -4,50 +4,87 @@
 #include "film.h"
 #include <ctype.h>
 
-Film *chargerFilms(char *nomFichier, int *nbFilms) {
-      *nbFilms = 0;
+//==============COULEURS=====================================//
+#define RESET   "\033[0m"
+#define ROUGE   "\033[31m"
+#define VERT    "\033[32m"
+#define JAUNE   "\033[33m"
+#define BLEU    "\033[34m"
+#define MAGENTA "\033[35m"
+#define CYAN    "\033[36m"
+#define GRAS    "\033[1m"
 
-    FILE *f = fopen(nomFichier, "r");
-    if (f == NULL) {
-        /* Le fichier n'existe pas encore : on le crée vide */
-        f = fopen(nomFichier, "w");
-        if (f != NULL) fclose(f);
+static int id_max(const Catalogue *c);
+static int contient_insensible(const char *texte, const char *motif);
+
+//============FONCTION CHARGER FILMS=========================//
+Film *chargerFilms(char *nomFichier, int *nbFilms)
+{
+    FILE *fichier = fopen(nomFichier, "r");
+
+    if (fichier == NULL)
+    {
+        *nbFilms = 0;
         return NULL;
     }
 
-    /* 1re passe : compter les lignes pour allouer exactement */
-    int nb = 0;
+    int compteur = 0;
     char ligne[256];
-    while (fgets(ligne, sizeof(ligne), f)) nb++;
-    rewind(f);
 
-    if (nb == 0) { fclose(f); return NULL; }
+    while (fgets(ligne, sizeof(ligne), fichier) != NULL)
+    {
+        compteur++;
+    }
 
-    Film *tab = malloc(nb * sizeof(Film));
-    if (tab == NULL) {
-        fprintf(stderr, "Erreur : allocation mémoire échouée.\n");
-        fclose(f);
+    Film *tableau = malloc(compteur * sizeof(Film));
+
+    if (tableau == NULL)
+    {
+        fclose(fichier);
+        *nbFilms = 0;
         return NULL;
     }
 
-    /* 2e passe : lire chaque ligne au format id;titre;genre;annee;note */
-    int i = 0;
-    while (i < nb && fgets(ligne, sizeof(ligne), f)) {
-        /* Supprimer le '\n' final si présent */
-        ligne[strcspn(ligne, "\r\n")] = '\0';
-        if (sscanf(ligne, "%d;%99[^;];%49[^;];%d;%f",
-                   &tab[i].id,
-                   tab[i].titre,
-                   tab[i].genre,
-                   &tab[i].annee,
-                   &tab[i].note) == 5) {
-            i++;
-        }
-    }
-    fclose(f);
+    rewind(fichier);
 
+    int i = 0;
+
+    while (fgets(ligne, sizeof(ligne), fichier) != NULL)
+    {
+        if (ligne[0] == '\n' || ligne[0] == '\0')
+            continue;
+
+        char *token;
+
+        token = strtok(ligne, ";");
+        if (token == NULL) continue;
+        tableau[i].id = atoi(token);
+
+        token = strtok(NULL, ";");
+        if (token == NULL) continue;
+        strncpy(tableau[i].titre, token, sizeof(tableau[i].titre) - 1);
+        tableau[i].titre[sizeof(tableau[i].titre) - 1] = '\0';
+
+        token = strtok(NULL, ";");
+        if (token == NULL) continue;
+        strncpy(tableau[i].genre, token, sizeof(tableau[i].genre) - 1);
+        tableau[i].genre[sizeof(tableau[i].genre) - 1] = '\0';
+
+        token = strtok(NULL, ";");
+        if (token == NULL) continue;
+        tableau[i].annee = atoi(token);
+
+        token = strtok(NULL, ";");
+        if (token == NULL) continue;
+        tableau[i].note = atof(token);
+
+        i++;
+    }
+
+    fclose(fichier);   
     *nbFilms = i;
-    return tab;
+
+    return tableau;
 }
 
 int sauvegarderFilms(const Film *tableau, int nbFilms, const char *nomFichier) {
@@ -78,34 +115,348 @@ void clear_catalogue(Catalogue *c) {
     c->n = 0;
 }
 
-static int contient_insensible(const char *chaine, const char *motif) {
-    int lc = (int)strlen(chaine);
-    int lm = (int)strlen(motif);
-    for (int i = 0; i <= lc - lm; i++) {
-        int ok = 1;
-        for (int j = 0; j < lm; j++) {
-            if (tolower((unsigned char)chaine[i + j]) !=
-                tolower((unsigned char)motif[j])) {
-                ok = 0;
+//==================FONCTION AJOUTER FILM=======================//
+void ajouter_film(Catalogue *c)
+{
+    Film nouveau;
+    nouveau.id = id_max(c) + 1;
+
+    printf(CYAN "\n===== AJOUT D'UN FILM =====\n" RESET);
+
+    printf("Titre : ");
+    fgets(nouveau.titre, sizeof(nouveau.titre), stdin);
+    nouveau.titre[strcspn(nouveau.titre, "\n")] = '\0';
+
+    printf("Genre : ");
+    fgets(nouveau.genre, sizeof(nouveau.genre), stdin);
+    nouveau.genre[strcspn(nouveau.genre, "\n")] = '\0';
+
+    printf("Année : ");
+    scanf("%d", &nouveau.annee);
+    vider_buffer();
+
+    printf("Note : ");
+    scanf("%f", &nouveau.note);
+    vider_buffer();
+
+    Film *tmp = realloc(c->tab, (c->n + 1) * sizeof(Film));
+
+    if(tmp == NULL)
+    {
+        printf(ROUGE "Erreur d'allocation mémoire.\n" RESET);
+        return;
+    }
+
+    c->tab = tmp;
+    c->tab[c->n] = nouveau;
+    c->n++;
+    c->alloc = c->n;
+
+    sauvegarderFilms(c->tab, c->n, NOM_FICHIER);
+
+    printf(VERT "\nFilm ajouté avec succès !\n" RESET);
+}
+
+void afficher_film_carte(const Film *f)
+{
+    printf(CYAN "┌────────────────────────────────────────────┐\n" RESET);
+    printf(CYAN "│ " RESET GRAS JAUNE "🎬 %-40s" RESET CYAN "│\n" RESET, f->titre);
+    printf(CYAN "├────────────────────────────────────────────┤\n" RESET);
+    printf(CYAN "│ " RESET "ID     : %-34d" CYAN "│\n" RESET, f->id);
+    printf(CYAN "│ " RESET "Genre  : %-34s" CYAN "│\n" RESET, f->genre);
+    printf(CYAN "│ " RESET "Année  : %-34d" CYAN "│\n" RESET, f->annee);
+
+    if (f->note >= 7.0)
+        printf(CYAN "│ " RESET "Note   : " VERT "%.1f/10%-28s" RESET CYAN "│\n" RESET, f->note, "");
+    else if (f->note >= 4.0)
+        printf(CYAN "│ " RESET "Note   : " JAUNE "%.1f/10%-28s" RESET CYAN "│\n" RESET, f->note, "");
+    else
+        printf(CYAN "│ " RESET "Note   : " ROUGE "%.1f/10%-28s" RESET CYAN "│\n" RESET, f->note, "");
+
+    printf(CYAN "└────────────────────────────────────────────┘\n" RESET);
+}
+
+void afficher_films(const Catalogue *c)
+{
+    if (c->n == 0)
+    {
+        printf(ROUGE "\n❌ Catalogue vide.\n" RESET);
+        return;
+    }
+
+    printf(BLEU GRAS "\n═══════════════════════════════════════════════\n" RESET);
+    printf(BLEU GRAS "          🎞️  CATALOGUE DES FILMS  🎞️\n" RESET);
+    printf(BLEU GRAS "═══════════════════════════════════════════════\n\n" RESET);
+
+    for (int i = 0; i < c->n; i++)
+    {
+        afficher_film_carte(&c->tab[i]);
+        printf("\n");
+    }
+
+    printf(JAUNE "Total : %d film(s)\n\n" RESET, c->n);
+}
+
+void rechercher_par_id(const Catalogue *c, int id)
+{
+    for (int i = 0; i < c->n; i++)
+    {
+        if (c->tab[i].id == id)
+        {
+            printf(VERT GRAS "\n✅ FILM TROUVÉ !\n\n" RESET);
+            afficher_film_carte(&c->tab[i]);
+            return;
+        }
+    }
+    printf(ROUGE "\n❌ Aucun film avec l'ID %d.\n" RESET, id);
+}
+
+void rechercher_par_titre(const Catalogue *c, const char *titre)
+{
+    int trouve = 0;
+    for (int i = 0; i < c->n; i++)
+    {
+        if (contient_insensible(c->tab[i].titre, titre))
+        {
+            if (!trouve) printf(VERT GRAS "\n✅ FILM(S) TROUVÉ(S) !\n\n" RESET);
+            afficher_film_carte(&c->tab[i]);
+            printf("\n");
+            trouve = 1;
+        }
+    }
+    if (!trouve) printf(ROUGE "\n❌ Aucun film contenant le titre \"%s\".\n" RESET, titre);
+}
+
+void trier_par_note(const Catalogue *c)
+{
+    if (c->n == 0)
+    {
+        printf(ROUGE "\n❌ Catalogue vide.\n" RESET);
+        return;
+    }
+
+    Film *copie = malloc(c->n * sizeof(Film));
+    if (copie == NULL)
+    {
+        printf(ROUGE "Erreur d'allocation mémoire.\n" RESET);
+        return;
+    }
+    for (int i = 0; i < c->n; i++)
+    {
+        copie[i] = c->tab[i];
+    }
+
+    for (int i = 0; i < c->n - 1; i++)
+    {
+        for (int j = 0; j < c->n - 1 - i; j++)
+        {
+            if (copie[j].note < copie[j + 1].note)
+            {
+                Film tmp = copie[j];
+                copie[j] = copie[j + 1];
+                copie[j + 1] = tmp;
+            }
+        }
+    }
+
+    printf(BLEU GRAS "\n═══════════════════════════════════════════════\n" RESET);
+    printf(BLEU GRAS "       🏆 FILMS TRIÉS PAR NOTE DÉCROISSANTE 🏆\n" RESET);
+    printf(BLEU GRAS "═══════════════════════════════════════════════\n\n" RESET);
+
+    for (int i = 0; i < c->n; i++)
+    {
+        afficher_film_carte(&copie[i]);
+        printf("\n");
+    }
+
+    free(copie);
+}
+
+void trier_par_titre(const Catalogue *c)
+{
+    if (c->n == 0)
+    {
+        printf(ROUGE "\n❌ Catalogue vide.\n" RESET);
+        return;
+    }
+
+    Film *copie = malloc(c->n * sizeof(Film));
+    if (copie == NULL)
+    {
+        printf(ROUGE "Erreur d'allocation mémoire.\n" RESET);
+        return;
+    }
+    for (int i = 0; i < c->n; i++)
+    {
+        copie[i] = c->tab[i];
+    }
+
+    for (int i = 0; i < c->n - 1; i++)
+    {
+        for (int j = 0; j < c->n - 1 - i; j++)
+        {
+            if (strcmp(copie[j].titre, copie[j + 1].titre) > 0)
+            {
+                Film tmp = copie[j];
+                copie[j] = copie[j + 1];
+                copie[j + 1] = tmp;
+            }
+        }
+    }
+
+    printf(BLEU GRAS "\n═══════════════════════════════════════════════\n" RESET);
+    printf(BLEU GRAS "         🔤 FILMS TRIÉS PAR ORDRE ALPHABÉTIQUE 🔤\n" RESET);
+    printf(BLEU GRAS "═══════════════════════════════════════════════\n\n" RESET);
+
+    for (int i = 0; i < c->n; i++)
+    {
+        afficher_film_carte(&copie[i]);
+        printf("\n");
+    }
+
+    free(copie);
+}
+
+void top5_films(const Catalogue *c)
+{
+    if (c->n == 0)
+    {
+        printf(ROUGE "\n❌ Catalogue vide.\n" RESET);
+        return;
+    }
+
+    Film *copie = malloc(c->n * sizeof(Film));
+    if (copie == NULL)
+    {
+        printf(ROUGE "Erreur d'allocation mémoire.\n" RESET);
+        return;
+    }
+    for (int i = 0; i < c->n; i++)
+    {
+        copie[i] = c->tab[i];
+    }
+
+    for (int i = 0; i < c->n - 1; i++)
+    {
+        for (int j = 0; j < c->n - 1 - i; j++)
+        {
+            if (copie[j].note < copie[j + 1].note)
+            {
+                Film tmp = copie[j];
+                copie[j] = copie[j + 1];
+                copie[j + 1] = tmp;
+            }
+        }
+    }
+
+    int limite = (c->n < 5) ? c->n : 5;
+
+    printf(JAUNE GRAS "\n═══════════════════════════════════════════════\n" RESET);
+    printf(JAUNE GRAS "             ⭐ TOP %d DES FILMS ⭐\n" RESET, limite);
+    printf(JAUNE GRAS "═══════════════════════════════════════════════\n\n" RESET);
+
+    for (int i = 0; i < limite; i++)
+    {
+        printf(MAGENTA GRAS "  Rang %d\n" RESET, i + 1);
+        afficher_film_carte(&copie[i]);
+        printf("\n");
+    }
+
+    free(copie);
+}
+
+void afficher_statistiques(const Catalogue *c)
+{
+    if (c->n == 0)
+    {
+        printf(ROUGE "\n❌ Catalogue vide.\n" RESET);
+        return;
+    }
+
+    float somme = 0.0;
+    int indexMeilleur = 0;
+    int indexMoinsBon = 0;
+
+    for (int i = 0; i < c->n; i++)
+    {
+        somme += c->tab[i].note;
+
+        if (c->tab[i].note > c->tab[indexMeilleur].note)
+        {
+            indexMeilleur = i;
+        }
+        if (c->tab[i].note < c->tab[indexMoinsBon].note)
+        {
+            indexMoinsBon = i;
+        }
+    }
+
+    float moyenne = somme / c->n;
+
+    char genres[50][50];
+    int compteurs[50];
+    int nbGenres = 0;
+
+    for (int i = 0; i < c->n; i++)
+    {
+        int trouve = 0;
+
+        for (int j = 0; j < nbGenres; j++)
+        {
+            if (strcmp(genres[j], c->tab[i].genre) == 0)
+            {
+                compteurs[j]++;
+                trouve = 1;
                 break;
             }
         }
-        if (ok) return 1;
+
+        if (!trouve)
+        {
+            strncpy(genres[nbGenres], c->tab[i].genre, 49);
+            genres[nbGenres][49] = '\0';
+            compteurs[nbGenres] = 1;
+            nbGenres++;
+        }
     }
-    return 0;
+
+    printf(BLEU GRAS "\n═══════════════════════════════════════════════\n" RESET);
+    printf(BLEU GRAS "           📊 STATISTIQUES DU CATALOGUE 📊\n" RESET);
+    printf(BLEU GRAS "═══════════════════════════════════════════════\n\n" RESET);
+
+    printf(CYAN "┌────────────────────────────────────────────┐\n" RESET);
+    printf(CYAN "│ " RESET "Nombre total de films : %-19d" CYAN "│\n" RESET, c->n);
+    printf(CYAN "│ " RESET "Note moyenne           : " VERT "%-19.2f" RESET CYAN "│\n" RESET, moyenne);
+    printf(CYAN "└────────────────────────────────────────────┘\n\n" RESET);
+
+    printf(VERT GRAS "🏆 Film le mieux noté :\n" RESET);
+    afficher_film_carte(&c->tab[indexMeilleur]);
+
+    printf(ROUGE GRAS "\n💔 Film le moins bien noté :\n" RESET);
+    afficher_film_carte(&c->tab[indexMoinsBon]);
+
+    printf(JAUNE GRAS "\n🎭 Répartition par genre :\n" RESET);
+    printf(CYAN "┌────────────────────────────────────────────┐\n" RESET);
+    for (int j = 0; j < nbGenres; j++)
+    {
+        printf(CYAN "│ " RESET "%-25s : %-15d" CYAN "│\n" RESET, genres[j], compteurs[j]);
+    }
+    printf(CYAN "└────────────────────────────────────────────┘\n\n" RESET);
 }
 
-static int assurer_capacite(Catalogue *c) {
-    if (c->n < c->alloc) return 1;
-    int nouvelle_alloc = (c->alloc == 0) ? 4 : c->alloc * 2;
-    Film *tmp = realloc(c->tab, nouvelle_alloc * sizeof(Film));
-    if (tmp == NULL) {
-        fprintf(stderr, "Erreur : allocation mémoire échouée.\n");
-        return 0;
-    }
-    c->tab   = tmp;
-    c->alloc = nouvelle_alloc;
-    return 1;
+static int contient_insensible(const char *texte, const char *motif) {
+    char t[200], m[200];
+    int i;
+
+    for (i = 0; texte[i] && i < 199; i++)
+        t[i] = (char)tolower((unsigned char)texte[i]);
+    t[i] = '\0';
+
+    for (i = 0; motif[i] && i < 199; i++)
+        m[i] = (char)tolower((unsigned char)motif[i]);
+    m[i] = '\0';
+
+    return strstr(t, m) != NULL;
 }
 
 static int id_max(const Catalogue *c) {
@@ -113,64 +464,6 @@ static int id_max(const Catalogue *c) {
     for (int i = 0; i < c->n; i++)
         if (c->tab[i].id > max) max = c->tab[i].id;
     return max;
-}
-
-void ajouter_film(Catalogue *c) {
-    if (!assurer_capacite(c)) return;
-    Film f;
-    f.id = id_max(c) + 1;
-    printf("Titre : ");
-    scanf(" %99[^\n]", f.titre);
-    printf("Genre : ");
-    scanf(" %49[^\n]", f.genre);
-    printf("Année de sortie : ");
-    scanf("%d", &f.annee);
-    do {
-        printf("Note (0 à 10) : ");
-        scanf("%f", &f.note);
-        if (f.note < 0 || f.note > 10)
-            printf("  → Note invalide, réessayez.\n");
-    } while (f.note < 0 || f.note > 10);
-    c->tab[c->n] = f;
-    c->n++;
-    printf("Film « %s » ajouté avec l'ID %d.\n", f.titre, f.id);
-}
-
-void afficher_films(const Catalogue *c) {
-    if (c->n == 0) { printf("Le catalogue est vide.\n"); return; }
-    printf("\n%-5s %-30s %-20s %-6s %s\n", "ID", "Titre", "Genre", "Année", "Note");
-    printf("%-5s %-30s %-20s %-6s %s\n", "---", "------------------------------", "--------------------", "------", "----");
-    for (int i = 0; i < c->n; i++)
-        printf("%-5d %-30s %-20s %-6d %.1f\n",
-               c->tab[i].id, c->tab[i].titre,
-               c->tab[i].genre, c->tab[i].annee, c->tab[i].note);
-}
-
-void rechercher_par_id(const Catalogue *c, int id) {
-    for (int i = 0; i < c->n; i++) {
-        if (c->tab[i].id == id) {
-            printf("\nID    : %d\n",    c->tab[i].id);
-            printf("Titre : %s\n",      c->tab[i].titre);
-            printf("Genre : %s\n",      c->tab[i].genre);
-            printf("Année : %d\n",      c->tab[i].annee);
-            printf("Note  : %.1f/10\n", c->tab[i].note);
-            return;
-        }
-    }
-    printf("Aucun film trouvé avec l'ID %d.\n", id);
-}
-
-void rechercher_par_titre(const Catalogue *c, const char *motif) {
-    int trouve = 0;
-    for (int i = 0; i < c->n; i++) {
-        if (contient_insensible(c->tab[i].titre, motif)) {
-            printf("  [%d] %s (%d) – %.1f/10\n",
-                   c->tab[i].id, c->tab[i].titre,
-                   c->tab[i].annee, c->tab[i].note);
-            trouve++;
-        }
-    }
-    if (!trouve) printf("Aucun film ne correspond à « %s ».\n", motif);
 }
 
 void afficher_par_genre(const Catalogue *c, const char *genre) {
@@ -196,18 +489,25 @@ void modifier_film(Catalogue *c, int id) {
             char buf[100];
             int val_i;
             float val_f;
+
             printf("Nouveau titre (Entrée pour conserver) : ");
-            scanf(" %99[^\n]", buf);
-            if (buf[0] != '\0') strncpy(c->tab[i].titre, buf, 99);
+            fgets(buf, sizeof(buf), stdin);
+            buf[strcspn(buf, "\n")] = '\0';
+            if (strlen(buf) > 0) strncpy(c->tab[i].titre, buf, 99);
+
             printf("Nouveau genre (Entrée pour conserver) : ");
-            scanf(" %49[^\n]", buf);
-            if (buf[0] != '\0') strncpy(c->tab[i].genre, buf, 49);
+            fgets(buf, sizeof(buf), stdin);
+            buf[strcspn(buf, "\n")] = '\0';
+            if (strlen(buf) > 0) strncpy(c->tab[i].genre, buf, 49);
+
             printf("Nouvelle année (0 pour conserver) : ");
-            scanf("%d", &val_i);
-            if (val_i != 0) c->tab[i].annee = val_i;
+            if (scanf("%d", &val_i) == 1 && val_i != 0) c->tab[i].annee = val_i;
+            vider_buffer();
+
             printf("Nouvelle note (-1 pour conserver) : ");
-            scanf("%f", &val_f);
-            if (val_f >= 0 && val_f <= 10) c->tab[i].note = val_f;
+            if (scanf("%f", &val_f) == 1 && val_f >= 0 && val_f <= 10) c->tab[i].note = val_f;
+            vider_buffer();
+
             printf("Film modifié avec succès.\n");
             return;
         }
@@ -222,88 +522,9 @@ void supprimer_film(Catalogue *c, int id) {
             for (int j = i; j < c->n - 1; j++)
                 c->tab[j] = c->tab[j + 1];
             c->n--;
+            c->alloc = c->n;
             return;
         }
     }
     printf("Aucun film trouvé avec l'ID %d.\n", id);
-}
-
-void trier_par_note(Catalogue *c) {
-    for (int i = 0; i < c->n - 1; i++)
-        for (int j = 0; j < c->n - 1 - i; j++)
-            if (c->tab[j].note < c->tab[j + 1].note) {
-                Film tmp      = c->tab[j];
-                c->tab[j]     = c->tab[j + 1];
-                c->tab[j + 1] = tmp;
-            }
-    printf("Catalogue trié par note décroissante.\n");
-    afficher_films(c);
-}
-
-void trier_par_titre(Catalogue *c) {
-    for (int i = 0; i < c->n - 1; i++)
-        for (int j = 0; j < c->n - 1 - i; j++)
-            if (strcmp(c->tab[j].titre, c->tab[j + 1].titre) > 0) {
-                Film tmp      = c->tab[j];
-                c->tab[j]     = c->tab[j + 1];
-                c->tab[j + 1] = tmp;
-            }
-    printf("Catalogue trié par ordre alphabétique.\n");
-    afficher_films(c);
-}
-
-void top5_films(const Catalogue *c) {
-    if (c->n == 0) { printf("Le catalogue est vide.\n"); return; }
-    Film *copie = malloc(c->n * sizeof(Film));
-    if (copie == NULL) { fprintf(stderr, "Erreur mémoire.\n"); return; }
-    memcpy(copie, c->tab, c->n * sizeof(Film));
-    for (int i = 0; i < c->n - 1; i++)
-        for (int j = 0; j < c->n - 1 - i; j++)
-            if (copie[j].note < copie[j + 1].note) {
-                Film tmp   = copie[j];
-                copie[j]   = copie[j + 1];
-                copie[j+1] = tmp;
-            }
-    int limite = c->n < 5 ? c->n : 5;
-    printf("\n=== TOP %d FILMS ===\n", limite);
-    for (int i = 0; i < limite; i++)
-        printf("%d. [%.1f] %s (%d)\n", i + 1, copie[i].note, copie[i].titre, copie[i].annee);
-    free(copie);
-}
-
-void afficher_statistiques(const Catalogue *c) {
-    if (c->n == 0) { printf("Le catalogue est vide.\n"); return; }
-    float somme = 0;
-    int idx_max = 0, idx_min = 0;
-    for (int i = 0; i < c->n; i++) {
-        somme += c->tab[i].note;
-        if (c->tab[i].note > c->tab[idx_max].note) idx_max = i;
-        if (c->tab[i].note < c->tab[idx_min].note) idx_min = i;
-    }
-    printf("\n=== STATISTIQUES ===\n");
-    printf("Nombre de films   : %d\n", c->n);
-    printf("Note moyenne      : %.2f / 10\n", somme / c->n);
-    printf("Meilleur film     : %s (%.1f)\n", c->tab[idx_max].titre, c->tab[idx_max].note);
-    printf("Film le moins bon : %s (%.1f)\n", c->tab[idx_min].titre, c->tab[idx_min].note);
-    printf("\nFilms par genre :\n");
-    char genres_vus[50][50];
-    int  compteurs[50];
-    int  nb_genres = 0;
-    for (int i = 0; i < c->n; i++) {
-        int j;
-        for (j = 0; j < nb_genres; j++) {
-            if (contient_insensible(genres_vus[j], c->tab[i].genre) &&
-                contient_insensible(c->tab[i].genre, genres_vus[j])) {
-                compteurs[j]++;
-                break;
-            }
-        }
-        if (j == nb_genres && nb_genres < 50) {
-            strncpy(genres_vus[nb_genres], c->tab[i].genre, 49);
-            compteurs[nb_genres] = 1;
-            nb_genres++;
-        }
-    }
-    for (int j = 0; j < nb_genres; j++)
-        printf("  %-20s : %d film(s)\n", genres_vus[j], compteurs[j]);
 }
