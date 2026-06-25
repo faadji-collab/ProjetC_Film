@@ -169,7 +169,23 @@ void afficher_films(const Catalogue *c)
     printf(JAUNE "Total : %d film(s)\n\n" RESET, c->n);
 }
 
-//=============RECHERCHER FILM PAR ID====================//
+// ==============================RECHERCHER UN FILM PAR ID========================================//
+void rechercher_par_id(const Catalogue *c, int id)
+{
+    for (int i = 0; i < c->n; i++)
+    {
+        if (c->tab[i].id == id)
+        {
+            printf(VERT GRAS "\n✅ FILM TROUVÉ !\n\n" RESET);
+            afficher_film_carte(&c->tab[i]);
+            return;
+        }
+    }
+
+    printf(ROUGE "\n❌ Aucun film avec l'ID %d.\n" RESET, id);
+}
+
+//=============RECHERCHER FILM PAR TITRE====================//
 void rechercher_par_titre(const Catalogue *c, const char *titre)
 {
     for (int i = 0; i < c->n; i++)
