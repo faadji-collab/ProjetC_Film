@@ -20,7 +20,7 @@ void vider_buffer(void) {
  
 static void afficher_menu(void) {
     printf(BLEU GRAS "\n╔═══════════════════════════════════════════════╗\n" RESET);
-    printf(BLEU GRAS "║        🎬  CATALOGUE PERSONNEL DE FILMS  🎬    ║\n" RESET);
+    printf(BLEU GRAS "║        🎬  CATALOGUE PERSONNEL DE FILMS  🎬   ║\n" RESET);
     printf(BLEU GRAS "╠═══════════════════════════════════════════════╣\n" RESET);
     printf(BLEU "║  " RESET CYAN "1." RESET "  Ajouter un film                          " BLEU "║\n" RESET);
     printf(BLEU "║  " RESET CYAN "2." RESET "  Afficher tous les films                  " BLEU "║\n" RESET);
@@ -31,7 +31,7 @@ static void afficher_menu(void) {
     printf(BLEU "║  " RESET CYAN "7." RESET "  Supprimer un film                        " BLEU "║\n" RESET);
     printf(BLEU GRAS "╠═══════════════════════════════════════════════╣\n" RESET);
     printf(BLEU "║  " RESET JAUNE "8." RESET "  Trier par note décroissante              " BLEU "║\n" RESET);
-    printf(BLEU "║  " RESET JAUNE "9." RESET "  Trier par ordre alphabétique            " BLEU "║\n" RESET);
+    printf(BLEU "║  " RESET JAUNE "9." RESET "  Trier par ordre alphabétique             " BLEU "║\n" RESET);
     printf(BLEU "║  " RESET JAUNE "10." RESET " Top 5 des films                          " BLEU "║\n" RESET);
     printf(BLEU "║  " RESET JAUNE "11." RESET " Statistiques                             " BLEU "║\n" RESET);
     printf(BLEU GRAS "╠═══════════════════════════════════════════════╣\n" RESET);

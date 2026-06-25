@@ -470,12 +470,22 @@ void afficher_par_genre(const Catalogue *c, const char *genre) {
     int trouve = 0;
     printf("\nFilms de genre « %s » :\n", genre);
     for (int i = 0; i < c->n; i++) {
-        if (contient_insensible(c->tab[i].genre, genre)) {
-            printf("  [%d] %-30s %d  %.1f/10\n",
-                   c->tab[i].id, c->tab[i].titre,
-                   c->tab[i].annee, c->tab[i].note);
-            trouve++;
+        if (trouve == 0)
+        {
+            printf("\n══════════════════════════════════════════════════════\n");
+            printf("                 FILMS DU GENRE : %s\n", genre);
+            printf("══════════════════════════════════════════════════════\n");
+            printf(" ID   | TITRE                          | ANNEE | NOTE\n");
+            printf("------------------------------------------------------\n");
         }
+
+        printf(" %-4d | %-30s | %-5d | %-4.1f\n",
+            c->tab[i].id,
+            c->tab[i].titre,
+            c->tab[i].annee,
+            c->tab[i].note);
+
+        trouve++;
     }
     if (!trouve) printf("  Aucun film trouvé pour ce genre.\n");
 }
