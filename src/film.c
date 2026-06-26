@@ -38,7 +38,7 @@ Film *chargerFilms(char *nomFichier, int *nbFilms)
 
     Film *tableau = malloc(compteur * sizeof(Film));
 
-    if (tableau == NULL)
+    if (tableau == NULL && compteur > 0)
     {
         fclose(fichier);
         *nbFilms = 0;
@@ -87,6 +87,7 @@ Film *chargerFilms(char *nomFichier, int *nbFilms)
     return tableau;
 }
 
+//============SAUVEGARDER FILMS=========================//
 int sauvegarderFilms(const Film *tableau, int nbFilms, const char *nomFichier) {
     FILE *f = fopen(nomFichier, "w");
     if (f == NULL) {
@@ -102,6 +103,7 @@ int sauvegarderFilms(const Film *tableau, int nbFilms, const char *nomFichier) {
     return 1;
 }
 
+//============CATALOGUE FILMS=========================//
 void init_catalogue(Catalogue *c) {
     c->alloc = 0;
     c->n = 0;
@@ -157,6 +159,7 @@ void ajouter_film(Catalogue *c)
     printf(VERT "\nFilm ajouté avec succès !\n" RESET);
 }
 
+//============AFFICHER FILM GENERALE=========================//
 void afficher_film_carte(const Film *f)
 {
     printf(CYAN "┌────────────────────────────────────────────┐\n" RESET);
@@ -176,6 +179,7 @@ void afficher_film_carte(const Film *f)
     printf(CYAN "└────────────────────────────────────────────┘\n" RESET);
 }
 
+//============AFFICHER FILMS=========================//
 void afficher_films(const Catalogue *c)
 {
     if (c->n == 0)
@@ -197,6 +201,7 @@ void afficher_films(const Catalogue *c)
     printf(JAUNE "Total : %d film(s)\n\n" RESET, c->n);
 }
 
+//============RECHERCHER FILMS PAR ID=========================//
 void rechercher_par_id(const Catalogue *c, int id)
 {
     for (int i = 0; i < c->n; i++)
@@ -211,6 +216,7 @@ void rechercher_par_id(const Catalogue *c, int id)
     printf(ROUGE "\n❌ Aucun film avec l'ID %d.\n" RESET, id);
 }
 
+//============RECHERCHER FILMS PAR TITRE=========================//
 void rechercher_par_titre(const Catalogue *c, const char *titre)
 {
     int trouve = 0;
@@ -227,6 +233,7 @@ void rechercher_par_titre(const Catalogue *c, const char *titre)
     if (!trouve) printf(ROUGE "\n❌ Aucun film contenant le titre \"%s\".\n" RESET, titre);
 }
 
+//============TRIER FILMS PAR NOTE=========================//
 void trier_par_note(const Catalogue *c)
 {
     if (c->n == 0)
@@ -272,6 +279,25 @@ void trier_par_note(const Catalogue *c)
     free(copie);
 }
 
+//================INSESIBILITÉ À LA CASSE=======================//
+int strcmp_insensible(const char *s1, const char *s2)
+{
+    while (*s1 && *s2)
+    {
+        char c1 = tolower((unsigned char)*s1);
+        char c2 = tolower((unsigned char)*s2);
+
+        if (c1 != c2)
+            return c1 - c2;
+
+        s1++;
+        s2++;
+    }
+
+    return tolower((unsigned char)*s1)
+         - tolower((unsigned char)*s2);
+}
+//============TRIER FILMS PAR TITRE=========================//
 void trier_par_titre(const Catalogue *c)
 {
     if (c->n == 0)
@@ -295,12 +321,12 @@ void trier_par_titre(const Catalogue *c)
     {
         for (int j = 0; j < c->n - 1 - i; j++)
         {
-            if (strcmp(copie[j].titre, copie[j + 1].titre) > 0)
-            {
-                Film tmp = copie[j];
-                copie[j] = copie[j + 1];
-                copie[j + 1] = tmp;
-            }
+        if (strcmp_insensible(copie[j].titre, copie[j + 1].titre) > 0)
+        {
+            Film tmp = copie[j];
+            copie[j] = copie[j + 1];
+            copie[j + 1] = tmp;
+        }
         }
     }
 
@@ -317,6 +343,7 @@ void trier_par_titre(const Catalogue *c)
     free(copie);
 }
 
+//==================TOP5 FILMS=======================//
 void top5_films(const Catalogue *c)
 {
     if (c->n == 0)
@@ -365,6 +392,7 @@ void top5_films(const Catalogue *c)
     free(copie);
 }
 
+//==================AFFICHER STATISTIQUE=========================//
 void afficher_statistiques(const Catalogue *c)
 {
     if (c->n == 0)
@@ -459,13 +487,14 @@ static int contient_insensible(const char *texte, const char *motif) {
     return strstr(t, m) != NULL;
 }
 
+//===================ID MAX============================//
 static int id_max(const Catalogue *c) {
     int max = 0;
     for (int i = 0; i < c->n; i++)
         if (c->tab[i].id > max) max = c->tab[i].id;
     return max;
 }
-
+//====================AFFICHER FILM PAR GENRE=====================//
 void afficher_par_genre(const Catalogue *c, const char *genre) {
     int trouve = 0;
     printf("\nFilms de genre « %s » :\n", genre);
@@ -490,6 +519,7 @@ void afficher_par_genre(const Catalogue *c, const char *genre) {
     if (!trouve) printf("  Aucun film trouvé pour ce genre.\n");
 }
 
+//=================MODIFIER FILM================================//
 void modifier_film(Catalogue *c, int id) {
     for (int i = 0; i < c->n; i++) {
         if (c->tab[i].id == id) {
@@ -503,13 +533,20 @@ void modifier_film(Catalogue *c, int id) {
             printf("Nouveau titre (Entrée pour conserver) : ");
             fgets(buf, sizeof(buf), stdin);
             buf[strcspn(buf, "\n")] = '\0';
-            if (strlen(buf) > 0) strncpy(c->tab[i].titre, buf, 99);
+            if (strlen(buf) > 0)
+            {
+                strncpy(c->tab[i].titre, buf, sizeof(c->tab[i].titre) - 1);
+                c->tab[i].titre[sizeof(c->tab[i].titre) - 1] = '\0';
+            }
 
             printf("Nouveau genre (Entrée pour conserver) : ");
             fgets(buf, sizeof(buf), stdin);
             buf[strcspn(buf, "\n")] = '\0';
-            if (strlen(buf) > 0) strncpy(c->tab[i].genre, buf, 49);
-
+            if (strlen(buf) > 0) 
+            {
+                strncpy(c->tab[i].genre, buf, sizeof(c->tab[i].genre) - 1);
+                c->tab[i].genre[sizeof(c->tab[i].genre) - 1] = '\0';
+            }
             printf("Nouvelle année (0 pour conserver) : ");
             if (scanf("%d", &val_i) == 1 && val_i != 0) c->tab[i].annee = val_i;
             vider_buffer();
@@ -525,6 +562,7 @@ void modifier_film(Catalogue *c, int id) {
     printf("Aucun film trouvé avec l'ID %d.\n", id);
 }
 
+//=====================SUPPRIMER FILM============================//
 void supprimer_film(Catalogue *c, int id) {
     for (int i = 0; i < c->n; i++) {
         if (c->tab[i].id == id) {
